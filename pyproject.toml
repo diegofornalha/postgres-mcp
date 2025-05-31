@@ -3,7 +3,7 @@ name = "postgres-mcp"
 version = "0.3.0"
 description = "PostgreSQL Tuning and Analysis Tool"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.5.0",
     "psycopg[binary]>=3.2.6",
@@ -79,7 +79,7 @@ known-first-party = ["postgres-mcp"]
 
 [tool.pyright]
 typeCheckingMode = "standard"
-pythonVersion = "3.12"
+pythonVersion = "3.11"
 strictParameterNullChecking = true
 reportMissingTypeStubs = false
 # reportUnknownMemberType = true

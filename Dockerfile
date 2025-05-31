@@ -1,61 +1,46 @@
-# First, build the application in the `/app` directory.
-# See `Dockerfile` for details.
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+FROM python:3.11-slim
 
-# Disable Python downloads, because we want to use the system interpreter
-# across both images. If using a managed Python version, it needs to be
-# copied from the build image into the final image; see `standalone.Dockerfile`
-# for an example.
-ENV UV_PYTHON_DOWNLOADS=0
+# Metadados
+LABEL maintainer="Diego (Claude)"
+LABEL version="2.0"
+LABEL description="PostgreSQL MCP Server with Performance Tools"
 
-WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y libpq-dev gcc \
-  && rm -rf /var/lib/apt/lists/*
-RUN --mount=type=cache,target=/root/.cache/uv \
-  --mount=type=bind,source=uv.lock,target=uv.lock \
-  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-  uv sync --frozen --no-install-project --no-dev
-ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-  uv sync --frozen --no-dev
-
-
-FROM python:3.12-slim-bookworm
-# It is important to use the image that matches the builder, as the path to the
-# Python executable must be the same, e.g., using `python:3.11-slim-bookworm`
-# will fail.
-
-COPY --from=builder --chown=app:app /app /app
-
-ENV PATH="/app/.venv/bin:$PATH"
-
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
-LABEL org.opencontainers.image.description="Postgres MCP Agent - Multi-architecture container (${TARGETPLATFORM})"
-LABEL org.opencontainers.image.source="https://github.com/crystaldba/postgres-mcp"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.vendor="Crystal DBA"
-LABEL org.opencontainers.image.url="https://www.crystaldba.ai"
-
-# Install runtime system dependencies
+# Instalar dependências do sistema
 RUN apt-get update && apt-get install -y \
-  libpq-dev \
-  iputils-ping \
-  dnsutils \
-  net-tools \
-  && rm -rf /var/lib/apt/lists/*
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+# Criar usuário não-root
+RUN useradd -m -u 1000 mcp
 
-# Expose the SSE port
-EXPOSE 8000
+# Criar diretório de trabalho
+WORKDIR /app
 
-# Run the postgres-mcp server
-# Users can pass a database URI or individual connection arguments:
-#   docker run -it --rm postgres-mcp postgres://user:pass@host:port/dbname
-#   docker run -it --rm postgres-mcp -h myhost -p 5432 -U myuser -d mydb
-ENTRYPOINT ["/app/docker-entrypoint.sh", "postgres-mcp"]
-CMD []
+# Copiar arquivos de requisitos primeiro (cache de camadas)
+COPY requirements.txt .
+
+# Instalar dependências Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código fonte
+COPY --chown=mcp:mcp src/ ./src/
+COPY --chown=mcp:mcp handlers.py .
+
+# Criar diretório de logs
+RUN mkdir -p /app/logs && chown mcp:mcp /app/logs
+
+# Mudar para usuário não-root
+USER mcp
+
+# Variáveis de ambiente
+ENV DATABASE_URI=""
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Executar o MCP
+CMD ["python", "-u", "src/postgres_mcp/server_simple.py"]

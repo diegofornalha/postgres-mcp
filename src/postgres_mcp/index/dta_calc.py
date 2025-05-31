@@ -2,7 +2,7 @@ import logging
 import time
 from itertools import combinations
 from typing import Any
-from typing import override
+from ..typing_compat import override
 
 import humanize
 from pglast.ast import ColumnRef

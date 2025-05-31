@@ -1,7 +1,8 @@
 import asyncio
 import sys
 
-from . import server
+# Temporariamente usar o servidor simplificado
+from . import server_simple as server
 from . import top_queries
 
 

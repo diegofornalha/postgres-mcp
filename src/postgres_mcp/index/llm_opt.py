@@ -2,7 +2,7 @@ import logging
 import math
 from dataclasses import dataclass
 from typing import Any
-from typing import override
+from ..typing_compat import override
 
 import instructor
 from openai import OpenAI
