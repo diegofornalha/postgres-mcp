@@ -348,6 +348,29 @@ chmod +x /root/.claude/postgres-mcp/start_postgres_mcp.sh
 claude mcp add postgres-mcp -s user -- /root/.claude/postgres-mcp/start_postgres_mcp.sh
 ```
 
+### postgres-mcp aparece como "failed" (NOVO - 06/01/2025)
+
+Se o postgres-mcp aparecer como "failed" ao executar o comando `mcp`:
+
+1. **Verifique se o módulo psycopg está instalado:**
+```bash
+cd /root/.claude/postgres-mcp
+source venv/bin/activate
+pip install psycopg psycopg-binary
+```
+
+2. **Reinicie o postgres-mcp no Claude Code:**
+```bash
+claude mcp remove postgres-mcp -s user
+claude mcp add postgres-mcp -s user -- /root/.claude/postgres-mcp/start_postgres_mcp.sh
+```
+
+3. **Verifique os logs de erro:**
+```bash
+# Os logs estão em diretórios específicos por projeto
+ls /root/.cache/claude-cli-nodejs/*/mcp-logs-postgres-mcp/
+```
+
 ### Erro de conexão com banco
 
 1. Verifique a DATABASE_URI:
@@ -358,6 +381,23 @@ echo $DATABASE_URI
 2. Teste conexão com psql:
 ```bash
 psql $DATABASE_URI -c "SELECT 1"
+```
+
+### Trabalhando com múltiplas instâncias PostgreSQL
+
+Quando precisar alternar entre diferentes bancos PostgreSQL, você tem duas opções:
+
+**Opção 1: Reiniciar o MCP com nova DATABASE_URI**
+```bash
+export DATABASE_URI="postgresql://user:pass@localhost:5437/dbname"
+claude mcp remove postgres-mcp -s user
+claude mcp add postgres-mcp -s user -- /root/.claude/postgres-mcp/start_postgres_mcp.sh
+```
+
+**Opção 2: Usar comandos diretos (mais rápido para múltiplas instâncias)**
+```bash
+# Útil quando precisa acessar várias instâncias sem reiniciar o MCP
+psql -h localhost -p 5437 -U user -d dbname -c "SELECT * FROM table"
 ```
 
 ### Logs e Debug
