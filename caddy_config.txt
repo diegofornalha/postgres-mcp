@@ -1,0 +1,39 @@
+# Configuração do Caddy para PostgreSQL SSE Server
+# Adicionar ao /etc/caddy/Caddyfile
+
+postgres-sse.agentesintegrados.com {
+    # Proxy reverso para o servidor SSE
+    reverse_proxy localhost:8081
+    
+    # Headers para SSE funcionar corretamente
+    header {
+        # Permitir CORS
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Authorization, Content-Type"
+        
+        # Headers para SSE
+        Cache-Control "no-cache"
+        X-Accel-Buffering "no"
+    }
+    
+    # Timeout maior para conexões SSE
+    @sse {
+        path /sse/*
+    }
+    handle @sse {
+        reverse_proxy localhost:8081 {
+            flush_interval -1
+            transport http {
+                read_timeout 0
+                write_timeout 0
+            }
+        }
+    }
+    
+    # Logs
+    log {
+        output file /etc/caddy/logs/postgres-sse.log
+        format json
+    }
+}
